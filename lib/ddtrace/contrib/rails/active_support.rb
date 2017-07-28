@@ -49,6 +49,8 @@ module Datadog
         def self.create_span(tracer)
           service = ::Rails.configuration.datadog_trace.fetch(:default_cache_service)
           type = Datadog::Ext::CACHE::TYPE
+
+          return unless tracer.active_span() # the whole trace will be skipped if active span is nil
           tracer.trace('rails.cache', service: service, span_type: type)
         end
 

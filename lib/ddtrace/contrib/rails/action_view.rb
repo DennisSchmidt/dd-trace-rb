@@ -40,6 +40,8 @@ module Datadog
 
           tracer = ::Rails.configuration.datadog_trace.fetch(:tracer)
           type = Datadog::Ext::HTTP::TEMPLATE
+
+          return unless tracer.active_span() # the whole trace will be skipped if active span is nil
           tracer.trace('rails.render_template', span_type: type)
 
           Thread.current[key] = true
@@ -53,6 +55,8 @@ module Datadog
 
           tracer = ::Rails.configuration.datadog_trace.fetch(:tracer)
           type = Datadog::Ext::HTTP::TEMPLATE
+
+          return unless tracer.active_span() # the whole trace will be skipped if active span is nil
           tracer.trace('rails.render_partial', span_type: type)
 
           Thread.current[key] = true

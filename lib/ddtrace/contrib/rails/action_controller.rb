@@ -26,6 +26,8 @@ module Datadog
           tracer = ::Rails.configuration.datadog_trace.fetch(:tracer)
           service = ::Rails.configuration.datadog_trace.fetch(:default_controller_service)
           type = Datadog::Ext::HTTP::TYPE
+
+          return unless tracer.active_span() # the whole trace will be skipped if active span is nil
           tracer.trace('rails.action_controller', service: service, span_type: type)
 
           Thread.current[KEY] = true

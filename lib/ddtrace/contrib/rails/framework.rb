@@ -46,7 +46,8 @@ module Datadog
           trace_agent_hostname: Datadog::Writer::HOSTNAME,
           trace_agent_port: Datadog::Writer::PORT,
           env: nil,
-          tags: {}
+          tags: {},
+          skip_paths: []
         }.freeze
 
         # configure Datadog settings

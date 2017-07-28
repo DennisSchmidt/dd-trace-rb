@@ -56,7 +56,7 @@ module Datadog
         end
 
         # rubocop:disable Metrics/MethodLength
-        def call(env)
+        def start_trace(env)
           # configure the Rack middleware once
           configure()
 
@@ -84,22 +84,10 @@ module Datadog
           end
 
           env[:datadog_rack_request_span] = request_span
+        end
 
-          # call the rest of the stack
-          status, headers, response = @app.call(env)
-        # rubocop:disable Lint/RescueException
-        # Here we really want to catch *any* exception, not only StandardError,
-        # as we really have no clue of what is in the block,
-        # and it is user code which should be executed no matter what.
-        # It's not a problem since we re-raise it afterwards so for example a
-        # SignalException::Interrupt would still bubble up.
-        rescue Exception => e
-          # catch exceptions that may be raised in the middleware chain
-          # Note: if a middleware catches an Exception without re raising,
-          # the Exception cannot be recorded here
-          request_span.set_error(e)
-          raise e
-        ensure
+        # rubocop:disable Metrics/MethodLength
+        def finish_trace(env, request_span, status)
           # the source of truth in Rack is the PATH_INFO key that holds the
           # URL for the current request; some framework may override that
           # value, especially during exception handling and because of that
@@ -135,6 +123,29 @@ module Datadog
           end
 
           request_span.finish()
+        end
+
+        # rubocop:disable Metrics/MethodLength
+        def call(env)
+          skip_trace = @options.fetch(:skip_paths).include?(env['PATH_INFO'])
+          request_span = start_trace(env) unless skip_trace
+
+          # call the rest of the stack
+          status, headers, response = @app.call(env)
+        # rubocop:disable Lint/RescueException
+        # Here we really want to catch *any* exception, not only StandardError,
+        # as we really have no clue of what is in the block,
+        # and it is user code which should be executed no matter what.
+        # It's not a problem since we re-raise it afterwards so for example a
+        # SignalException::Interrupt would still bubble up.
+        rescue Exception => e
+          # catch exceptions that may be raised in the middleware chain
+          # Note: if a middleware catches an Exception without re raising,
+          # the Exception cannot be recorded here
+          request_span.set_error(e) if request_span
+          raise e
+        ensure
+          finish_trace(env, request_span, status) if request_span
 
           [status, headers, response]
         end

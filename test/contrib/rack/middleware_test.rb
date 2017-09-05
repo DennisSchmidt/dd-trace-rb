@@ -165,7 +165,7 @@ class TracerTest < RackBaseTest
     assert_equal('GET', span.get_tag('http.method'))
     assert_equal('500', span.get_tag('http.status_code'))
     assert_equal('/500/', span.get_tag('http.url'))
-    refute_nil(span.get_tag('error.stack'))
+    assert_nil(span.get_tag('error.stack'))
     assert_equal(1, span.status)
     assert_nil(span.parent)
   end
@@ -238,6 +238,14 @@ class TracerTest < RackBaseTest
     refute_nil(span.get_tag('error.stack'))
     assert_equal(1, span.status)
     assert_nil(span.parent)
+  end
+
+  def test_middleware_context_cleaning
+    get '/leak'
+    get '/success'
+
+    assert_equal(0, @tracer.provider.context.trace.length)
+    assert_equal(1, @tracer.writer.spans.length)
   end
 end
 

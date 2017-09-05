@@ -108,8 +108,7 @@ class TracingControllerTest < ActionController::TestCase
     assert_equal(1, span.status, 'span should be flagged as an error')
     assert_equal('ZeroDivisionError', span.get_tag('error.type'), 'type should contain the class name of the error')
     assert_equal('divided by 0', span.get_tag('error.msg'), 'msg should state we tried to divided by 0')
-    assert_match(/ddtrace/, span.get_tag('error.stack'), 'stack should contain the call stack when error was raised')
-    assert_match(/\n/, span.get_tag('error.stack'), 'stack should have multiple lines')
+    assert_nil(span.get_tag('error.stack'))
   end
 
   test 'http error code should be trapped and reported as such, even with no exception' do
@@ -127,6 +126,31 @@ class TracingControllerTest < ActionController::TestCase
     assert_equal(1, span.status, 'span should be flagged as an error')
     assert_nil(span.get_tag('error.type'), 'type should be undefined')
     assert_nil(span.get_tag('error.msg'), 'msg should be empty')
-    assert_match(/ddtrace/, span.get_tag('error.stack'), 'stack should contain the call stack when error was raised')
+    assert_nil(span.get_tag('error.stack'), 'no error stack')
+  end
+
+  test 'combining rails and custom tracing is supported' do
+    @tracer.trace('a-parent') do
+      get :index
+      assert_response :success
+      @tracer.trace('a-brother') do
+      end
+    end
+
+    spans = @tracer.writer.spans()
+    assert_equal(4, spans.length)
+
+    brother_span, parent_span, controller_span, = spans
+    assert_equal('rails.action_controller', controller_span.name)
+    assert_equal('http', controller_span.span_type)
+    assert_equal('TracingController#index', controller_span.resource)
+    assert_equal('index', controller_span.get_tag('rails.route.action'))
+    assert_equal('TracingController', controller_span.get_tag('rails.route.controller'))
+    assert_equal('a-parent', parent_span.name)
+    assert_equal('a-brother', brother_span.name)
+    assert_equal(controller_span.trace_id, parent_span.trace_id)
+    assert_equal(controller_span.trace_id, brother_span.trace_id)
+    assert_equal(parent_span.span_id, controller_span.parent_id)
+    assert_equal(brother_span.parent_id, controller_span.parent_id)
   end
 end

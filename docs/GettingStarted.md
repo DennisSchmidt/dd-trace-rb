@@ -106,6 +106,21 @@ Available settings are:
 * ``env``: set the environment. Rails users may set it to ``Rails.env`` to use their application settings.
 * ``tags``: set global tags that should be applied to all spans. Defaults to an empty hash
 
+#### Disabling Rails auto-instrumentation
+
+If you wish to disable all Rails auto-instrumentation, you need to set the env var ``DISABLE_DATADOG_RAILS``.
+
+Eg, within Ruby:
+
+    ENV['DISABLE_DATADOG_RAILS'] = "1" # this must be done before ddtrace is included at all
+    require 'ddtrace'
+
+Or, shell syntax, before launching Rails:
+
+```
+export DISABLE_DATADOG_RAILS=1
+```
+
 ### Sinatra
 
 The Sinatra integration traces requests and template rendering. The integration is based on the
@@ -152,6 +167,8 @@ retrieved at the Rack level.
 To start using the middleware in your generic Rack application, add it to your ``config.ru``:
 
     # config.ru example
+    require 'ddtrace/contrib/rack/middlewares'
+
     use Datadog::Contrib::Rack::TraceMiddleware
 
     app = proc do |env|
@@ -162,6 +179,9 @@ To start using the middleware in your generic Rack application, add it to your `
 
 Experimental distributed tracing support is available for this library.
 You need to set the ``:distributed_tracing_enabled`` option to true, for example:
+
+    # config.ru example
+    require 'ddtrace/contrib/rack/middlewares'
 
     use Datadog::Contrib::Rack::TraceMiddleware, distributed_tracing_enabled: true
 
@@ -177,6 +197,14 @@ See [distributed tracing](#Distributed_Tracing) for details.
 To modify the default middleware configuration, you can use middleware options as follows:
 
     # config.ru example
+    require 'ddtrace/contrib/rack/middlewares'
+
+    Datadog.tracer.configure(
+      enabled: true,
+      hostname: localhost,
+      port: 8126
+    )
+
     use Datadog::Contrib::Rack::TraceMiddleware, default_service: 'rack-stack'
 
     app = proc do |env|
